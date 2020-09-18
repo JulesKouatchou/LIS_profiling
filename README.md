@@ -6,6 +6,10 @@
 
 ## Overview
 
+The ESMF tracing tool records detailed timing information for all phases of all ESMF components executing in an application for later analysis. Trace analysis can be used to understand what happened during a program's execution and is often used for diagnosing problems, debugging, and performance analysis.
+
+To exercise tracing in LIS, the following two calls have been placed around specific regions of the code:
+
        call ESMF_TraceRegionEnter(region_name)
             Record an event in the trace for this PET indicating entry into a user-defined region with the given name.
        call ESMF_TraceRegionExit(region_name)
@@ -43,4 +47,4 @@ Trace events are flushed to file at a regular interval. If the application crash
 
 ## Analyzing the Profiling Outputs
 
-After running an ESMF application with tracing enabled, a directory called `traceout` will be created in the run directory and it will contain a metadata file and an event stream file `esmf_stream_XXXX` for each PET with tracing enabled. Together these files form a valid CTF trace which may be analyzed with any of the tools listed above.
+After running an ESMF application with tracing enabled, a directory called `traceout` will be created in the run directory and it will contain a metadata file and an event stream file `esmf_stream_XXXX` for each PET with tracing enabled. Together these files form a valid [Common Trace Format](https://diamon.org/ctf/) (CTF) trace which may be analyzed with any of the tools listed above.
