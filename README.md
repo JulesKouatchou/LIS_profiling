@@ -82,6 +82,8 @@ To turn on the tool, we need to add the following line in the `lis.config` file:
    
 ### Sample Output
 
+The timing statistics below were produced by the tool. They show the overall minimum/maximum/average times it took to to run specific sections of the code with 16x16 CPUs. There are two main blocks, `LIS_init` and `LIS_run`, and all the others fall within them.
+
       -----------------------------------------------------------------
            Block                       Min Time    Max Time    Avg Time
       -----------------------------------------------------------------
