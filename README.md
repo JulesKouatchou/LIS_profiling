@@ -141,3 +141,22 @@ The timing statistics below were produced by the tool. They show the overall min
         rtm_out                          0.0001      0.0001      0.0001
         appMod_run                       0.0001      0.0001      0.0001
         appMod_out                       0.0001      0.0001      0.0001
+
+### Output Processes
+
+
+| Decomposition | Block   | Min Time |  Max Time |  Avg Time |
+| :--- | :--- | ---: | ---: | ---: |
+| **16x8** |  | | | |
+| |  wrt/sf_output        | 1.2570  | 4524.9708 | 418.1044 |
+| |  wrt/sf_output/write  | 0.0002  | 3684.2062 |  28.7835 |
+| |  wrt/sf_output/prep   | 1.1604  | 828.9570  | 243.0304 |
+| |  wrt/sf_output/gather | 0.0007  | 3242.0455 | 146.2442 |
+| **16x16** |  | | | |
+| |  wrt/sf_output        | 0.5593  | 4112.4504 | 320.3346 |
+| |  wrt/sf_output/write  | 0.0002  | 3689.2348 |  14.4116 |
+| |  wrt/sf_output/prep   | 0.5140  | 410.8607  | 114.4580 |
+| |  wrt/sf_output/gather | 0.0007  | 3265.3612 | 191.4290 |
+
+
+
