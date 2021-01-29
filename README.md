@@ -271,7 +271,7 @@ In Option 3, there is one IO server per node.
 
 We can also record the bandwith as shown in the figure:
 
-![fig_results](fig_compare_io_options.png)
+![fig_results](fig_io_servers.png)
 
 
 In the above experiment, inter-processor communications for Option 3 were were intra nodes only and did not involve the network.
