@@ -1,11 +1,11 @@
-# LIS Profiling
+# <span style="color: red">LIS Profiling</span>
 
-## With ESMF TRACE
-### Reference Document
+## <span style="color: red">With ESMF TRACE</span>
+### <span style="color: blue">Reference Document</span>
 
 [ESMF Profiling and Tracing](http://www.earthsystemmodeling.org/esmf_releases/last_built/ESMF_refdoc/node6.html#SECTION060130000000000000000)
 
-### Overview
+### <span style="color: blue">Overview</span>
 
 The ESMF tracing tool records detailed timing information for all phases of all ESMF components executing in an application for later analysis. Trace analysis can be used to understand what happened during a program's execution and is often used for diagnosing problems, debugging, and performance analysis.
 
@@ -18,7 +18,7 @@ To exercise tracing in LIS, the following two calls have been placed around spec
        
        
 
-### Compilation
+### <span style="color: blue">Compilation</span>
 
 Before you compile the code, set the environment variable `ESMF_TRACE` to 1:
 
@@ -26,7 +26,7 @@ Before you compile the code, set the environment variable `ESMF_TRACE` to 1:
 
 The calls related to the profiling of sections of the code will be included in the compilation process.
 
-### Run Time
+### <span style="color: blue">Run Time</span>
 
 **ESMF tracing is disabled by default.** To enable tracing, set the `ESMF_RUNTIME_TRACE` environment variable to `ON`. You do not need to recompile your code to enable tracing.
 
@@ -46,11 +46,11 @@ Trace events are flushed to file at a regular interval. If the application crash
        setenv ESMF_RUNTIME_TRACE_FLUSH EAGER
 
 
-### Analyzing the Profiling Outputs
+### <span style="color: blue">Analyzing the Profiling Outputs</span>
 
 After running an ESMF application with tracing enabled, a directory called `traceout` will be created in the run directory and it will contain a metadata file and an event stream file `esmf_stream_XXXX` for each PET with tracing enabled. Together these files form a valid [Common Trace Format](https://diamon.org/ctf/) (CTF) trace which may be analyzed with any of the tools listed above.
 
-## With LIS_ftiming Module
+## <span style="color: red">With LIS_ftiming Module</span>
 
 The LIS_ftiming Module is an MPI based tool containing subroutines that allow users to measure the time to run regions of the code. 
 It produces the following timing statistics: 
@@ -61,7 +61,7 @@ It produces the following timing statistics:
 
 These  statistics are useful for analyzing load imbalances.
 
-### Source Code Modifications
+### <span style="color: blue">Source Code Modifications</span>
 
 The LIS_ftiming tool is contained in the module file `LIS_ftimingMod.F90` that resides in the `core/` directory. It consists on four main subroutines:
 
@@ -74,13 +74,13 @@ We introduced a logical variable `LIS_rc%do_ftiming` to exercise the tool at run
         if (LIS_rc%do_ftiming) call Ftiming_On(bloc_name)
         if (LIS_rc%do_ftiming) call Ftiming_Off(block_name)
 
-### Run Time Setting
+### <span style="color: blue">Run Time Setting</span>
 
 To turn on the tool, we need to add the following line in the `lis.config` file:
 
         Profiling Tool: yes
    
-### Sample Output
+### <span style="color: blue">Sample Output</span>
 
 The timing statistics below were produced by the tool. They show the overall minimum/maximum/average times it took to to run specific sections of the code with 16x16 CPUs. There are two main blocks, `LIS_init` and `LIS_run`, and all the others fall within them.
 
@@ -142,7 +142,7 @@ The timing statistics below were produced by the tool. They show the overall min
         appMod_run                       0.0001      0.0001      0.0001
         appMod_out                       0.0001      0.0001      0.0001
 
-### Effect of Data Compression
+### <span style="color: blue">Effect of Data Compression</span>
 
 The default data compression level was 9 (highest used by netCDF4). The higher the level,
 the more time it takes to compress the data.
@@ -194,7 +194,7 @@ the more time it takes to compress the data.
 | |  wrt/sf_output/gather |  0.0008  |  546.5432  | 24.3946 |
 
 
-### Output Processes
+### <span style="color: blue">Output Processes</span>
 
 
 | Decomposition | Block   | Min Time |  Max Time |  Avg Time |
@@ -211,7 +211,7 @@ the more time it takes to compress the data.
 | |  wrt/sf_output/gather | 0.0007  | 3265.3612 | 191.4290 |
 
 
-## Exploring IO Options
+## <span style="color: red">Exploring IO Options</span>
 
 We wrote standalone Fortran codes to explore different IO options:
 
@@ -235,7 +235,7 @@ Communications occur only within the group of nodes.
 | 2      | Parallel IO, single shared file | 1 | None |
 | 3      | Distributed IO, single file per IO domain | IO domains | max num of cores in IO domain |
 
-### More on the IO Server Concept
+### <span style="color: blue">More on the IO Server Concept</span>
 Here, we use the following settings:
 
 - **NX**: number of CPUs along the x-direction is a multiple of the number of cores per node.
@@ -260,7 +260,7 @@ We have several options for the IO servers (based on the number of nodes):
 | 2  |  1  |  2  |  |
 | 1  |  1  |  1  | All the cores communicate with the root CPU. |
 
-### Few Results
+### <span style="color: blue">Few Results</span>
 
 We want to use the three options to write out an array of size 2 Gb in netCDF-4 files.
 We measure the total time it takes to open the file(s), declare the variable, 
