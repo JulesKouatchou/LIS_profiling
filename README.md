@@ -5,6 +5,8 @@
 
 [ESMF Profiling and Tracing](http://www.earthsystemmodeling.org/esmf_releases/last_built/ESMF_refdoc/node6.html#SECTION060130000000000000000)
 
+[Parallel I\O in Flexible Modelling System (FMS) and Modular Ocean Model 5 (MOM5)](https://doi.org/10.5194/gmd-13-1885-2020)
+
 ### <span style="color: blue">Overview</span>
 
 The ESMF tracing tool records detailed timing information for all phases of all ESMF components executing in an application for later analysis. Trace analysis can be used to understand what happened during a program's execution and is often used for diagnosing problems, debugging, and performance analysis.
@@ -230,7 +232,7 @@ Communications occur only within the group of nodes.
 ![fig_domain](https://gmd.copernicus.org/articles/13/1885/2020/gmd-13-1885-2020-avatar-web.png)
 
 - In **Option 1**, all the available cores communicate with the root one.  The root core has to finish serially writing the global data into the file before all the cores proceeed with the calculations.  This method requires either an expensive collective operation and the storage of the entire field into memory or a separation of the work into a sequence of multiple potentially expensive collectives and IO writes.
-- In **Option 2**, all cores are allowed to directly write to a single shared file.  Here, the IO operations are parallelized but this can require an increasing number of concurrent I=O operations, which can produce an abnormal load on the OS and its target filesystems when such a model is distributed over thousands of cores.  There are also contention issues associated with the writing of the data itself.
+- In **Option 2**, all cores are allowed to directly write to a single shared file.  Here, the IO operations are parallelized but this can require an increasing number of concurrent IO operations, which can produce an abnormal load on the OS and its target filesystems when such a model is distributed over thousands of cores.  There are also contention issues associated with the writing of the data itself.
 - For **Option 3**, within each IO domain, one core is nominated to be responsible for the gathering and writing of data. This has the effect of reducing the number of IO processes to the number of IO domains, while still permitting some degree of scalability from the concurrent IO.
 
 The following table summarizes the basic features of each option.
