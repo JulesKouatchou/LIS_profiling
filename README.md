@@ -142,6 +142,58 @@ The timing statistics below were produced by the tool. They show the overall min
         appMod_run                       0.0001      0.0001      0.0001
         appMod_out                       0.0001      0.0001      0.0001
 
+### Effect of Data Compression
+
+The default data compression level was 9 (highest used by netCDF4). The higher the level,
+the more time it takes to compress the data.
+
+**Compression Level 9:**
+
+| CPUs | Block   | Min Time |  Max Time |  Avg Time |
+| :--- | :--- | ---: | ---: | ---: |
+| **128** |  | | | |
+| | run/sf_run           |  0.0020   |  791.9822  |  480.2172 |
+| | wrt/sf_output        | 3223.1213 | 4532.1582  | 3489.7110 |
+| | wrt/sf_output/write  | 0.0003    | 3696.3498  |  28.8784 |
+| | wrt/sf_output/prep   | 1.3318    | 824.0970   | 234.2953 |
+| | wrt/sf_output/gather | 11.6957   | 3325.1255  | 3226.4690 |
+
+**Compression Level 3:**
+
+| CPUs | Block   | Min Time |  Max Time |  Avg Time |
+| :--- | :--- | ---: | ---: | ---: |
+| **128** |  | | | |
+| | run/sf_run           | 0.0021  |  787.1739 | 481.2631 |
+| | wrt/sf_output        | 1.2740  | 1267.4710 | 263.3622 |
+| | wrt/sf_output/write  | 0.0002  |  437.3784 |   3.4175 |
+| | wrt/sf_output/prep   | 1.1748  |  818.3115 | 239.5731 |
+| | wrt/sf_output/gather | 0.0007  |  474.6096 |  20.3239 |
+
+
+**Compression Level 1:**
+
+| CPUs | Block   | Min Time |  Max Time |  Avg Time |
+| :--- | :--- | ---: | ---: | ---: |
+| **128** |  | | | |
+| |  run/sf_run           |  0.0020  |  799.7638  |  483.4789 |
+| |  wrt/sf_output        |  1.2766  |  1348.0326 |  269.6079 |
+| |  wrt/sf_output/write  |  0.0003  |  508.4471  |  3.9729 |
+| |  wrt/sf_output/prep   |  0.0011  |  821.7192  |  240.0488 |
+| |  wrt/sf_output/gather |  0.0007  |  569.8330  |   24.6224 |
+| **256** |  | | | |
+| |  run/sf_run           |  0.0020  |  396.9359  |  243.1434 |
+| |  wrt/sf_output        |  0.5536  |  786.0248  |  138.6930 |
+| |  wrt/sf_output/write  |  0.0003  |  358.5394  |  1.4010 |
+| |  wrt/sf_output/prep   |  0.0012  |  409.8312  |  115.3306 |
+| |  wrt/sf_output/gather |  0.0008  |  390.0956  |  21.5385 |
+| **512** |  | | | |
+| |  run/sf_run           |  0.0018  |  201.9601  |  121.5342 |
+| |  wrt/sf_output        |  0.0039  |  584.8298  |  35.4417 |
+| |  wrt/sf_output/write  |  0.0002  |  358.3871  |  0.7003 |
+| |  wrt/sf_output/prep   |  0.0004  |  208.7223  |  10.2215 |
+| |  wrt/sf_output/gather |  0.0008  |  546.5432  | 24.3946 |
+
+
 ### Output Processes
 
 
@@ -159,4 +211,80 @@ The timing statistics below were produced by the tool. They show the overall min
 | |  wrt/sf_output/gather | 0.0007  | 3265.3612 | 191.4290 |
 
 
+## Exploring IO Options
+
+We wrote standalone Fortran codes to explore different IO options:
+
+- **Option 1**: one processor is in charge of collecting the data and writing the data into a single file.
+- **Option 2**: We use paralle netCDF-4 to allow each processor to write its portion of the data into a single file.
+- **Option 3**: We introduce IO servers where a set of nodes are grouped together and they coover a specific subdomain. Within one group one processor is in charge of collecting the data from other processors in the group and writing the data to its own file.
+
+The figure below halps us understand the three options.
+We have 36 nodes (0, 1, 2, ..., 35) and each of them covers one subdomain. 
+In Option 1, the root processor is in Node 0 and is responsible for writting out the data.
+In Option 2, all the individual cores in each nodes will write the data in parallel into a single file.
+Finally, in Option 3, the global domain is subdivided into IO domains (yellow lines) that will be handled by a group of nodes.
+Within that group of nodes, one core is in charge of performing the write operations. 
+Communications occur only within the group of nodes.
+
+![fig_domain](https://gmd.copernicus.org/articles/13/1885/2020/gmd-13-1885-2020-avatar-web.png)
+
+| Option | Write Pattern | Number of files | Number of cores communicating |
+| 1      | single-threaded, single file | 1 | All |
+| 2      | Parallel IO, single shared file | 1 | None |
+| 3      | Distributed IO, single file per IO domain | IO domains | max num of cores in IO domain |
+
+### More on the IO Server Concept
+Here, we use the following settings:
+
+- **NX**: number of CPUs along the x-direction is a multiple of the number of cores per node.
+- **NY**: number of CPUs along the y-direction is the number of layers of nodes.
+ 
+We can select any arbitrary number of IO servers along the x-direction (nxio) and the y-direction (nyio). 
+**nxio** is a factor of NX/(num of cores per node) and **nyio** is a factor of NX.
+
+If for instance we use 36 Haswell nodes on discover, I can have: NX = 252 (28 times 9) and NY = 4. 
+We can see the NXxNY decomposition as 4 stacks (layers on the y-direction) of 9 nodes (on the x-direction). 
+We have several options for the IO servers (based on the number of nodes):
+ 
+| Number of IO Servers | nxio | nyio | Comments |
+| --- | --- | --- | --- |
+| 36   |  9  |  4  | Each node has its own io server |
+| 18   |  9  |  2  |  |
+| 12   |  3  |  4  |  |
+| 9   |  9  |  1  | Domain decomposition along the x-axis only  |
+| 6  |  3  |  2  | Shown in the figure above |
+| 4  |  1  |  4  |  |
+| 3  |  3  |  1  |  |
+| 2  |  1  |  2  |  |
+| 1  |  1  |  1  | All the cores communicate with the root CPU. |
+
+### Few Results
+
+We want to use the three options to write out an array of size 2 Gb in netCDF-4 files.
+We measure the total time it takes to open the file(s), declare the variable, 
+gather the data (if necessary) and write out the array.
+We vary the number of nodes from 1 to 6. 
+In Option 3, there is one IO server per node.
+
+![fig_results](fig_compare_io_options.png)
+
+We can also record the bandwith as shown in the figure:
+
+![fig_results](fig_compare_io_options.png)
+
+
+In the above experiment, inter-processor communications for Option 3 were were intra nodes only and did not involve the network.
+Basiscally, the time needed by the IO server to gather the data is minimal.
+The question is what happens if IO domains have more than one node.
+In a new experiment, we consider NX = 224 (8 nodes) and NY = 1. 
+We write out the 2Gb array when nxio is equal to 1, 2, 4, 8. 
+Note than nyio = 1 in all the cases because NY = 1.
+
+| nxio | Total Time (s) | Time to Gather (s) | Bandwith for Gather (Gb/s) |
+| ---  | ---        | ---            |          --- |
+| 8    |  1.0753    | 0.0893  | 2.80 |
+| 4    |  2.0675    | 0.1420  | 3.52 |
+| 2    |  4.0514    | 0.2554  | 3.91 |
+| 1    |  8.0100    | 0.4441  | 4.50 |
 
