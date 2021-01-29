@@ -213,39 +213,48 @@ the more time it takes to compress the data.
 
 ## <span style="color: red">Exploring IO Options</span>
 
-We wrote standalone Fortran codes to explore different IO options:
+We wrote standalone Fortran/MPI codes to explore different IO options for writting out netCDF-4 files:
 
 - **Option 1**: one processor is in charge of collecting the data and writing the data into a single file.
-- **Option 2**: We use paralle netCDF-4 to allow each processor to write its portion of the data into a single file.
-- **Option 3**: We introduce IO servers where a set of nodes are grouped together and they coover a specific subdomain. Within one group one processor is in charge of collecting the data from other processors in the group and writing the data to its own file.
+- **Option 2**: We use parallel netCDF-4 to allow each processor to write its portion of the data into a single file.
+- **Option 3**: We introduce IO servers where a set of nodes are grouped together and they cover a specific subdomain (IO domain). Within one group, one processor is in charge of collecting the data from other processors in the group and writing the data to its own file.
 
-The figure below halps us understand the three options.
-We have 36 nodes (0, 1, 2, ..., 35) and each of them covers one subdomain. 
-In Option 1, the root processor is in Node 0 and is responsible for writting out the data.
+The figure below helps us understand the three options.
+We have 36 nodes (0, 1, 2, ..., 35) and each of them covers one subdomain (black square, computational domain for the corresponding node). 
+In Option 1, the root processor is in Node 0 and is responsible for gathering subarrays across processors from all nodes and writting out the data.
 In Option 2, all the individual cores in each nodes will write the data in parallel into a single file.
-Finally, in Option 3, the global domain is subdivided into IO domains (yellow lines) that will be handled by a group of nodes.
+Finally, in Option 3, the global domain is subdivided into IO domains (yellow borders) that will be handled by a group of nodes.
 Within that group of nodes, one core is in charge of performing the write operations. 
 Communications occur only within the group of nodes.
 
 ![fig_domain](https://gmd.copernicus.org/articles/13/1885/2020/gmd-13-1885-2020-avatar-web.png)
 
+- In **Option 1**, all the available cores communicate with the root one.  The root core has to finish serially writing the global data into the file before all the cores proceeed with the calculations.  This method requires either an expensive collective operation and the storage of the entire field into memory or a separation of the work into a sequence of multiple potentially expensive collectives and IO writes.
+- In **Option 2**, all cores are allowed to directly write to a single shared file.  Here, the IO operations are parallelized but this can require an increasing number of concurrent I=O operations, which can produce an abnormal load on the OS and its target filesystems when such a model is distributed over thousands of cores.  There are also contention issues associated with the writing of the data itself.
+- For **Option 3**, within each IO domain, one core is nominated to be responsible for the gathering and writing of data. This has the effect of reducing the number of IO processes to the number of IO domains, while still permitting some degree of scalability from the concurrent IO.
+
+The following table summarizes the basic features of each option.
+
 | Option | Write Pattern | Number of files | Number of cores communicating |
 | ---    | --- |  --- | --- |
 | 1      | single-threaded, single file | 1 | All |
 | 2      | Parallel IO, single shared file | 1 | None |
-| 3      | Distributed IO, single file per IO domain | IO domains | max num of cores in IO domain |
+| 3      | Distributed IO, single file per IO domain | IO domains | max of number of cores in one IO domain |
+
 
 ### <span style="color: blue">More on the IO Server Concept</span>
 Here, we use the following settings:
 
-- **NX**: number of CPUs along the x-direction is a multiple of the number of cores per node.
-- **NY**: number of CPUs along the y-direction is the number of layers of nodes.
+- **NX**: number of cores along the x-direction is a multiple of the number of cores per node.
+- **NY**: number of cores along the y-direction is the number of layers/layers of nodes.
+
+Basically, with NX, we can determine how many nodes we have along the x-direction and NY will be the number of layers of group of nodes (along x-direction) are avavailable.
  
 We can select any arbitrary number of IO servers along the x-direction (nxio) and the y-direction (nyio). 
 **nxio** is a factor of NX/(num of cores per node) and **nyio** is a factor of NX.
 
-If for instance we use 36 Haswell nodes on discover, I can have: NX = 252 (28 times 9) and NY = 4. 
-We can see the NXxNY decomposition as 4 stacks (layers on the y-direction) of 9 nodes (on the x-direction). 
+If for instance we use 36 Haswell nodes on discover, we can have: NX = 252 (28 times 9) and NY = 4. 
+We can see the NXxNY decomposition as 4 stacks (layers on the y-direction) of 9 nodes (on the x-direction) per layer. 
 We have several options for the IO servers (based on the number of nodes):
  
 | Number of IO Servers | nxio | nyio | Comments |
@@ -273,7 +282,6 @@ In Option 3, there is one IO server per node.
 We can also record the bandwith as shown in the figure:
 
 ![fig_results](fig_io_servers.png)
-
 
 In the above experiment, inter-processor communications for Option 3 were were intra nodes only and did not involve the network.
 Basiscally, the time needed by the IO server to gather the data is minimal.
