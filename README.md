@@ -230,6 +230,7 @@ Communications occur only within the group of nodes.
 ![fig_domain](https://gmd.copernicus.org/articles/13/1885/2020/gmd-13-1885-2020-avatar-web.png)
 
 | Option | Write Pattern | Number of files | Number of cores communicating |
+| ---    | --- |  --- | --- |
 | 1      | single-threaded, single file | 1 | All |
 | 2      | Parallel IO, single shared file | 1 | None |
 | 3      | Distributed IO, single file per IO domain | IO domains | max num of cores in IO domain |
@@ -281,10 +282,10 @@ In a new experiment, we consider NX = 224 (8 nodes) and NY = 1.
 We write out the 2Gb array when nxio is equal to 1, 2, 4, 8. 
 Note than nyio = 1 in all the cases because NY = 1.
 
-| nxio | Total Time (s) | Time to Gather (s) | Bandwith for Gather (Gb/s) |
-| ---  | ---        | ---            |          --- |
-| 8    |  1.0753    | 0.0893  | 2.80 |
-| 4    |  2.0675    | 0.1420  | 3.52 |
-| 2    |  4.0514    | 0.2554  | 3.91 |
-| 1    |  8.0100    | 0.4441  | 4.50 |
+| nxio | Total Time (s) | Time to Gather (s) | Data per IO Domain (Gb) |Bandwith for Gather (Gb/s) |
+| ---  | ---        | ---            |          --- | --- |
+| 8    |  1.0753    | 0.0893  | 0.25 | 2.80 |
+| 4    |  2.0675    | 0.1420  | 0.50 | 3.52 |
+| 2    |  4.0514    | 0.2554  | 1.00 | 3.91 |
+| 1    |  8.0100    | 0.4441  | 2.00 | 4.50 |
 
