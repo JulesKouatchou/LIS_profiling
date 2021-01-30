@@ -71,10 +71,14 @@ The LIS_ftiming tool is contained in the module file `LIS_ftimingMod.F90` that r
 - `Ftiming_On`/`Ftiming_Off`: Called to turn on/off the time measurement at specific regions of the code.
 - `Ftiming_Output`: Subroutine to gather all timing numbers and produce a timing statistics text file.
 
-We introduced a logical variable `LIS_rc%do_ftiming` to exercise the tool at run time. The following statements were added around each region of interest:
+We introduced a logical variable `LIS_rc%do_ftiming` to exercise the tool at run time. 
+The following statements were added around each region of interest:
 
-        if (LIS_rc%do_ftiming) call Ftiming_On(bloc_name)
+        if (LIS_rc%do_ftiming) call Ftiming_On(block_name)
+           CODE BLOCK
         if (LIS_rc%do_ftiming) call Ftiming_Off(block_name)
+
+Every time the area of interest is covers during the run, the profiling tool will measure the elapsed time to execute it.
 
 ### <span style="color: blue">Run Time Setting</span>
 
@@ -84,7 +88,14 @@ To turn on the tool, we need to add the following line in the `lis.config` file:
    
 ### <span style="color: blue">Sample Output</span>
 
-The timing statistics below were produced by the tool. They show the overall minimum/maximum/average times it took to to run specific sections of the code with 16x16 CPUs. There are two main blocks, `LIS_init` and `LIS_run`, and all the others fall within them.
+In the initial use of the profiling tool, we collected timing statistics of code blocks that encompass
+initialization procedures, time stepping and producing history (writing data files).
+We wanted to first identify the most time consuming components and also the ones showing the most
+load imbalance.
+
+The timing statistics below show the overall minimum/maximum/average times it took to to run 
+specific sections of the code with a 16x16 procesor decomposition (256 cores) for a two-day integeration. 
+There are two main blocks, `LIS_init` and `LIS_run`, and all the others fall within them.
 
       -----------------------------------------------------------------
            Block                       Min Time    Max Time    Avg Time
@@ -144,7 +155,38 @@ The timing statistics below were produced by the tool. They show the overall min
         appMod_run                       0.0001      0.0001      0.0001
         appMod_out                       0.0001      0.0001      0.0001
 
+From the above table, we can make few observations:
+
+- The time required for initialization procedures (`LIS_init`) is not a concern. We did additional runs where we vary the number of cores (64, 128, 512) and we found out that the initialization times pretty much remain the same.
+- The time for calculations (the `sf_run` code block) accounts for less than 10% of the overall time. Further runs with different number of cores show a scaling well beyond 512 cores. We concluded that time stepping done in `sf_run` is not an area of concern.
+- The obvios time consuming and load imbalance code block is the one performing the writing of data in netCDF-4 files: `sf_output`. 
+
+The remaining part of our work is to determine how we can significantly reduce the time it takes to execute `sf_output`
+and how we can make it scale across beyond 1000 cores.
+We needed to carry out a finer profiling of `sf_output` by identifying it subcomponents.
+Writing data in files involve at least three basic processes:
+
+- **Data Preparation** (`sf_output/prep`): This includes all the necessary steps (mapping data from 2D to 1D or the opposit, etc.) to prepare the data before they are ready to be sent or written out.
+- **Data Gathering** (`sf_output/gather`): all the cores send their portion of the data to the root core. the LIS code, this is done through MPI_GATHERV calls.
+- **Data Dump** (`sf_output/write`): The root core writes the global data to output files. During this stage, the other core have to wait till the root is done before proceeding to the next task.
+
+We did one more experiment and obtained the following statistics:
+
+      -----------------------------------------------------------------
+           Block                       Min Time    Max Time    Avg Time
+      -----------------------------------------------------------------
+        wrt/sf_output                   31.0142   4190.8978   2970.2978
+        wrt/sf_output/write              0.0002   3463.9228     13.5315
+        wrt/sf_output/prep               0.5820    413.7532    115.9073
+        wrt/sf_output/gather             0.0005   3342.4777   2839.6233
+
+The time spent in `sf_output/prep` is fairly small and we were able to verify that this particular area of the code continues to scale.
+When the root core receives all the necessary information, the time to dump data is pretty mich the same regardless of the number of CPUs used.
+This leads us to the Data Gathering process that deals with communications to the root processor.
+Improving the parallel performance of the LIS code requires the reduction of the amount of communications needed to produce outputs.
+
 ### <span style="color: blue">Effect of Data Compression</span>
+
 
 The default data compression level was 9 (highest used by netCDF4). The higher the level,
 the more time it takes to compress the data.
@@ -159,6 +201,12 @@ the more time it takes to compress the data.
 | | wrt/sf_output/write  | 0.0003    | 3696.3498  |  28.8784 |
 | | wrt/sf_output/prep   | 1.3318    | 824.0970   | 234.2953 |
 | | wrt/sf_output/gather | 11.6957   | 3325.1255  | 3226.4690 |
+| **256** |  | | | |
+| | run/sf_run           | 0.0020    |  398.7676  |  242.6268 |
+| | wrt/sf_output        | 31.0142   | 4190.8978  | 2970.2978 |
+| | wrt/sf_output/write  | 0.0002    | 3463.9228  |   13.5315 |
+| | wrt/sf_output/prep   | 0.5820    |  413.7532  |  115.9073 |
+| | wrt/sf_output/gather | 0.0005    | 3342.4777  | 2839.6233 |
 
 **Compression Level 3:**
 
