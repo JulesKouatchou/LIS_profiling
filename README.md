@@ -161,7 +161,7 @@ From the above table, we can make few observations:
 - The time for calculations (the `sf_run` code block) accounts for less than 10% of the overall time. Further runs with different number of cores show a scaling well beyond 512 cores. We concluded that time stepping done in `sf_run` is not an area of concern (see figure below).
 - The obvious time consuming and load imbalance code block is the one performing the writing of data in netCDF-4 files: `sf_output`. 
 
-![fig_time_stepping](fig_time_steppinp.png)
+![fig_time_stepping](fig_time_stepping.png)
 
 The remaining part of our work is to determine how we can significantly reduce the time it takes to execute `sf_output`
 and how we can make it scale across beyond 1000 cores.
