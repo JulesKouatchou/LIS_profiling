@@ -158,8 +158,10 @@ There are two main blocks, `LIS_init` and `LIS_run`, and all the others fall wit
 From the above table, we can make few observations:
 
 - The time required for initialization procedures (`LIS_init`) is not a concern. We did additional runs where we vary the number of cores (64, 128, 512) and we found out that the initialization times pretty much remain the same.
-- The time for calculations (the `sf_run` code block) accounts for less than 10% of the overall time. Further runs with different number of cores show a scaling well beyond 512 cores. We concluded that time stepping done in `sf_run` is not an area of concern.
-- The obvios time consuming and load imbalance code block is the one performing the writing of data in netCDF-4 files: `sf_output`. 
+- The time for calculations (the `sf_run` code block) accounts for less than 10% of the overall time. Further runs with different number of cores show a scaling well beyond 512 cores. We concluded that time stepping done in `sf_run` is not an area of concern (see figure below).
+- The obvious time consuming and load imbalance code block is the one performing the writing of data in netCDF-4 files: `sf_output`. 
+
+![fig_time_stepping](fig_time_steppinp.png)
 
 The remaining part of our work is to determine how we can significantly reduce the time it takes to execute `sf_output`
 and how we can make it scale across beyond 1000 cores.
@@ -187,22 +189,26 @@ Improving the parallel performance of the LIS code requires the reduction of the
 
 ### <span style="color: blue">Effect of Data Compression</span>
 
-
-The default data compression level was 9 (highest used by netCDF4). The higher the level,
-the more time it takes to compress the data.
+Before we start exploring options the reduce and scale the time spent in output procedures,
+we need to first exhaust all improvement possibilities with the current version of the LIS code.
+The default data compression level was 9 (highest used by netCDF4). 
+The higher the level, the more time it takes to compress the data.
+We tried to profile the output section of the code as function of the data compression level (9, 3 and 1).
+The results below show that the elapsed time significantly decreases when we reduce the compression level.
+From level 9 to level 1, we decrease the average time by at least an order of magnitude (10 times)
+while reducing the file sizes by a factor of less than 1.10.
+We concluded that the compression level of 1 is more appropriate for time and disc management.
 
 **Compression Level 9:**
 
 | CPUs | Block   | Min Time |  Max Time |  Avg Time |
 | :--- | :--- | ---: | ---: | ---: |
 | **128** |  | | | |
-| | run/sf_run           |  0.0020   |  791.9822  |  480.2172 |
 | | wrt/sf_output        | 3223.1213 | 4532.1582  | 3489.7110 |
 | | wrt/sf_output/write  | 0.0003    | 3696.3498  |  28.8784 |
 | | wrt/sf_output/prep   | 1.3318    | 824.0970   | 234.2953 |
 | | wrt/sf_output/gather | 11.6957   | 3325.1255  | 3226.4690 |
 | **256** |  | | | |
-| | run/sf_run           | 0.0020    |  398.7676  |  242.6268 |
 | | wrt/sf_output        | 31.0142   | 4190.8978  | 2970.2978 |
 | | wrt/sf_output/write  | 0.0002    | 3463.9228  |   13.5315 |
 | | wrt/sf_output/prep   | 0.5820    |  413.7532  |  115.9073 |
@@ -213,7 +219,6 @@ the more time it takes to compress the data.
 | CPUs | Block   | Min Time |  Max Time |  Avg Time |
 | :--- | :--- | ---: | ---: | ---: |
 | **128** |  | | | |
-| | run/sf_run           | 0.0021  |  787.1739 | 481.2631 |
 | | wrt/sf_output        | 1.2740  | 1267.4710 | 263.3622 |
 | | wrt/sf_output/write  | 0.0002  |  437.3784 |   3.4175 |
 | | wrt/sf_output/prep   | 1.1748  |  818.3115 | 239.5731 |
@@ -225,19 +230,16 @@ the more time it takes to compress the data.
 | CPUs | Block   | Min Time |  Max Time |  Avg Time |
 | :--- | :--- | ---: | ---: | ---: |
 | **128** |  | | | |
-| |  run/sf_run           |  0.0020  |  799.7638  |  483.4789 |
 | |  wrt/sf_output        |  1.2766  |  1348.0326 |  269.6079 |
 | |  wrt/sf_output/write  |  0.0003  |  508.4471  |  3.9729 |
 | |  wrt/sf_output/prep   |  0.0011  |  821.7192  |  240.0488 |
 | |  wrt/sf_output/gather |  0.0007  |  569.8330  |   24.6224 |
 | **256** |  | | | |
-| |  run/sf_run           |  0.0020  |  396.9359  |  243.1434 |
 | |  wrt/sf_output        |  0.5536  |  786.0248  |  138.6930 |
 | |  wrt/sf_output/write  |  0.0003  |  358.5394  |  1.4010 |
 | |  wrt/sf_output/prep   |  0.0012  |  409.8312  |  115.3306 |
 | |  wrt/sf_output/gather |  0.0008  |  390.0956  |  21.5385 |
 | **512** |  | | | |
-| |  run/sf_run           |  0.0018  |  201.9601  |  121.5342 |
 | |  wrt/sf_output        |  0.0039  |  584.8298  |  35.4417 |
 | |  wrt/sf_output/write  |  0.0002  |  358.3871  |  0.7003 |
 | |  wrt/sf_output/prep   |  0.0004  |  208.7223  |  10.2215 |
@@ -363,6 +365,6 @@ The write process will be done in parallel.
 We will still have the contention issue but we will consisder a limited number of IO servers (4 to 6)
 to alleviate any possible bottleneck.
 
-![fig_io_servers_paralell_write](fig_io_servers_paralell_write.png)
+![fig_io_servers_parallel_write](fig_io_servers_parallel_write.png)
 Option 4
 
