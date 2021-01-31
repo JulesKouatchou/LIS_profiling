@@ -292,13 +292,13 @@ The following table summarizes the basic features of each option.
 | 3      | Distributed IO, single file per IO domain | IO domains | max of number of cores in one IO domain |
 
 
-[fig_serial_write](fig_serial_write.png)
+![fig_serial_write](fig_serial_write.png)
 Option 1
 
-[fig_parallel_write](fig_parallel_write.png)
+![fig_parallel_write](fig_parallel_write.png)
 Option 2
 
-[fig_io_servers_serial_write](fig_io_servers_serial_write.png)
+![fig_io_servers_serial_write](fig_io_servers_serial_write.png)
 Option 3
 
 ### <span style="color: blue">More on the IO Server Concept</span>
@@ -363,6 +363,6 @@ The write process will be done in parallel.
 We will still have the contention issue but we will consisder a limited number of IO servers (4 to 6)
 to alleviate any possible bottleneck.
 
-[fig_io_servers_paralell_write](fig_io_servers_paralell_write.png)
+![fig_io_servers_paralell_write](fig_io_servers_paralell_write.png)
 Option 4
 
