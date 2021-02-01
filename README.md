@@ -1,11 +1,6 @@
 # <span style="color: red">LIS Profiling and Performance Analysis</span>
 
 ## <span style="color: red">With ESMF TRACE</span>
-### <span style="color: blue">Reference Document</span>
-
-[ESMF Profiling and Tracing](http://www.earthsystemmodeling.org/esmf_releases/last_built/ESMF_refdoc/node6.html#SECTION060130000000000000000)
-
-[Parallel I\O in Flexible Modelling System (FMS) and Modular Ocean Model 5 (MOM5)](https://doi.org/10.5194/gmd-13-1885-2020)
 
 ### <span style="color: blue">Overview</span>
 
@@ -246,52 +241,35 @@ We concluded that the compression level of 1 is more appropriate for time and di
 | |  wrt/sf_output/gather |  0.0008  |  546.5432  | 24.3946 |
 
 
-### <span style="color: blue">Output Processes</span>
+## <span style="color: red">Exploring I/O Options</span>
 
-
-| Decomposition | Block   | Min Time |  Max Time |  Avg Time |
-| :--- | :--- | ---: | ---: | ---: |
-| **16x8** |  | | | |
-| |  wrt/sf_output        | 1.2570  | 4524.9708 | 418.1044 |
-| |  wrt/sf_output/write  | 0.0002  | 3684.2062 |  28.7835 |
-| |  wrt/sf_output/prep   | 1.1604  | 828.9570  | 243.0304 |
-| |  wrt/sf_output/gather | 0.0007  | 3242.0455 | 146.2442 |
-| **16x16** |  | | | |
-| |  wrt/sf_output        | 0.5593  | 4112.4504 | 320.3346 |
-| |  wrt/sf_output/write  | 0.0002  | 3689.2348 |  14.4116 |
-| |  wrt/sf_output/prep   | 0.5140  | 410.8607  | 114.4580 |
-| |  wrt/sf_output/gather | 0.0007  | 3265.3612 | 191.4290 |
-
-
-## <span style="color: red">Exploring IO Options</span>
-
-We wrote standalone Fortran/MPI codes to explore different IO options for writting out netCDF-4 files:
+We wrote standalone Fortran/MPI codes to explore different I/O options for writting out netCDF-4 files:
 
 - **Option 1**: one processor is in charge of collecting the data and writing the data into a single file.
 - **Option 2**: We use parallel netCDF-4 to allow each processor to write its portion of the data into a single file.
-- **Option 3**: We introduce IO servers where a set of nodes are grouped together and they cover a specific subdomain (IO domain). Within one group, one processor is in charge of collecting the data from other processors in the group and writing the data to its own file.
+- **Option 3**: We introduce I/O servers where a set of nodes are grouped together and they cover a specific subdomain (I/O domain). Within one group, one processor is in charge of collecting the data from other processors in the group and writing the data to its own file.
 
 The figure below helps us understand the three options.
 We have 36 nodes (0, 1, 2, ..., 35) and each of them covers one subdomain (black square, computational domain for the corresponding node). 
 In Option 1, the root processor is in Node 0 and is responsible for gathering subarrays across processors from all nodes and writting out the data.
 In Option 2, all the individual cores in each nodes will write the data in parallel into a single file.
-Finally, in Option 3, the global domain is subdivided into IO domains (yellow borders) that will be handled by a group of nodes.
+Finally, in Option 3, the global domain is subdivided into I/O domains (yellow borders) that will be handled by a group of nodes.
 Within that group of nodes, one core is in charge of performing the write operations. 
 Communications occur only within the group of nodes.
 
 ![fig_domain](https://gmd.copernicus.org/articles/13/1885/2020/gmd-13-1885-2020-avatar-web.png)
 
-- In **Option 1**, all the available cores communicate with the root one.  The root core has to finish serially writing the global data into the file before all the cores proceeed with the calculations.  This method requires either an expensive collective operation and the storage of the entire field into memory or a separation of the work into a sequence of multiple potentially expensive collectives and IO writes.
-- In **Option 2**, all cores are allowed to directly write to a single shared file.  Here, the IO operations are parallelized but this can require an increasing number of concurrent IO operations, which can produce an abnormal load on the OS and its target filesystems when such a model is distributed over thousands of cores.  There are also contention issues associated with the writing of the data itself.
-- For **Option 3**, within each IO domain, one core is nominated to be responsible for the gathering and writing of data. This has the effect of reducing the number of IO processes to the number of IO domains, while still permitting some degree of scalability from the concurrent IO.
+- In **Option 1**, all the available cores communicate with the root one.  The root core has to finish serially writing the global data into the file before all the cores proceeed with the calculations.  This method requires either an expensive collective operation and the storage of the entire field into memory or a separation of the work into a sequence of multiple potentially expensive collectives and I/O writes.
+- In **Option 2**, all cores are allowed to directly write to a single shared file.  Here, the I/O operations are parallelized but this can require an increasing number of concurrent I/O operations, which can produce an abnormal load on the OS and its target filesystems when such a model is distributed over thousands of cores.  There are also contention issues associated with the writing of the data itself.
+- For **Option 3**, within each I/O domain, one core is nominated to be responsible for the gathering and writing of data. This has the effect of reducing the number of I/O processes to the number of I/O domains, while still permitting some degree of scalability from the concurrent I/O.
 
 The following table summarizes the basic features of each option.
 
 | Option | Write Pattern | Number of files | Number of cores communicating |
 | ---    | --- |  --- | --- |
 | 1      | single-threaded, single file | 1 | All |
-| 2      | Parallel IO, single shared file | 1 | None |
-| 3      | Distributed IO, single file per IO domain | IO domains | max of number of cores in one IO domain |
+| 2      | Parallel I/O, single shared file | 1 | None |
+| 3      | Distributed I/O, single file per I/O domain | I/O domains | max of number of cores in one I/O domain |
 
 
 ![fig_serial_write](fig_serial_write.png)
@@ -303,7 +281,7 @@ Option 2
 ![fig_io_servers_serial_write](fig_io_servers_serial_write.png)
 Option 3
 
-### <span style="color: blue">More on the IO Server Concept</span>
+### <span style="color: blue">More on the I/O Server Concept</span>
 Here, we use the following settings:
 
 - **NX**: number of cores along the x-direction is a multiple of the number of cores per node.
@@ -311,20 +289,20 @@ Here, we use the following settings:
 
 Basically, with NX, we can determine how many nodes we have along the x-direction and NY will be the number of layers of group of nodes (along x-direction) are avavailable.
  
-We can select any arbitrary number of IO servers along the x-direction (nxio) and the y-direction (nyio). 
+We can select any arbitrary number of I/O servers along the x-direction (nxio) and the y-direction (nyio). 
 **nxio** is a factor of NX/(num of cores per node) and **nyio** is a factor of NX.
 
 If for instance we use 36 Haswell nodes on discover, we can have: NX = 252 (28 times 9) and NY = 4. 
 We can see the NXxNY decomposition as 4 stacks (layers on the y-direction) of 9 nodes (on the x-direction) per layer. 
-We have several options for the IO servers (based on the number of nodes):
+We have several options for the I/O servers (based on the number of nodes):
  
-| Number of IO Servers | nxio | nyio | Comments |
+| Number of I/O Servers | nxio | nyio | Comments |
 | --- | --- | --- | --- |
 | 36   |  9  |  4  | Each node has its own io server |
 | 18   |  9  |  2  |  |
 | 12   |  3  |  4  |  |
 | 9   |  9  |  1  | Domain decomposition along the x-axis only  |
-| 6  |  3  |  2  | Shown in the figure above |
+| 6  |  3  |  2  | Shown in the `Compute and I/O domain decomposition` figure |
 | 4  |  1  |  4  |  |
 | 3  |  3  |  1  |  |
 | 2  |  1  |  2  |  |
@@ -336,7 +314,7 @@ We want to use the three options to write out an array of size 2 Gb in netCDF-4 
 We measure the total time it takes to open the file(s), declare the variable, 
 gather the data (if necessary) and write out the array.
 We vary the number of nodes from 1 to 6. 
-In Option 3, there is one IO server per node.
+In Option 3, there is one I/O server per node.
 
 ![fig_results](fig_compare_io_options.png)
 
@@ -345,13 +323,13 @@ We can also record the bandwith as shown in the figure:
 ![fig_results](fig_io_servers.png)
 
 In the above experiment, inter-processor communications for Option 3 were were intra nodes only and did not involve the network.
-Basiscally, the time needed by the IO server to gather the data is minimal.
-The question is what happens if IO domains have more than one node.
+Basiscally, the time needed by the I/O server to gather the data is minimal.
+The question is what happens if I/O domains have more than one node.
 In a new experiment, we consider NX = 224 (8 nodes) and NY = 1. 
 We write out the 2Gb array when nxio is equal to 1, 2, 4, 8. 
 Note than nyio = 1 in all the cases because NY = 1.
 
-| nxio | Total Time (s) | Time to Gather (s) | Data per IO Domain (Gb) |Bandwith for Gather (Gb/s) |
+| nxio | Total Time (s) | Time to Gather (s) | Data per I/O Domain (Gb) |Bandwith for Gather (Gb/s) |
 | ---  | ---        | ---            |          --- | --- |
 | 8    |  1.0753    | 0.0893  | 0.25 | 2.80 |
 | 4    |  2.0675    | 0.1420  | 0.50 | 3.52 |
@@ -360,11 +338,19 @@ Note than nyio = 1 in all the cases because NY = 1.
 
 ### <span style="color: blue">Another Option</span>
 
-We can expend Option by allowing allow the IO servers to write in a single shared file.
+We can expend Option by allowing allow the I/O servers to write in a single shared file.
 The write process will be done in parallel.
-We will still have the contention issue but we will consisder a limited number of IO servers (4 to 6)
+We will still have the contention issue but we will consisder a limited number of I/O servers (4 to 6)
 to alleviate any possible bottleneck.
 
 ![fig_io_servers_parallel_write](fig_io_servers_parallel_write.png)
 Option 4
 
+The advantage of this option is that we will no longer have to post-process the files as in Option 3.
+
+### <span style="color: blue">Reference Document</span>
+
+- [ESMF Profiling and Tracing](http://www.earthsystemmodeling.org/esmf_releases/last_built/ESMF_refdoc/node6.html#SECTION060130000000000000000)
+- [Parallel I\O in Flexible Modelling System (FMS) and Modular Ocean Model 5 (MOM5)](https://doi.org/10.5194/gmd-13-1885-2020)
+- [Introduction to HPC Parallel I/O](https://ideas-productivity.org/wordpress/wp-content/uploads/2018/03/webinar006-2016_HPC_IO_Intro.pdf)
+- [Parallel I/O in Practice](http://www.eecs.ucf.edu/~jwang/Teaching/EEL6760-f13/M02.tutorial.pdf)
